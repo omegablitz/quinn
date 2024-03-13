@@ -258,6 +258,7 @@ fn send(
         };
         if n == -1 {
             let e = io::Error::last_os_error();
+            tracing::error!("transmit error: {:?}", e);
             match e.kind() {
                 io::ErrorKind::Interrupted => {
                     // Retry the transmission
@@ -450,6 +451,7 @@ fn recv(io: SockRef<'_>, bufs: &mut [IoSliceMut<'_>], meta: &mut [RecvMeta]) -> 
         };
         if n == -1 {
             let e = io::Error::last_os_error();
+            tracing::error!("receive error: {:?}", e);
             if e.kind() == io::ErrorKind::Interrupted {
                 continue;
             }
