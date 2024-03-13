@@ -385,6 +385,9 @@ pub(crate) struct State {
     runtime: Arc<dyn Runtime>,
     /// The aggregateed contents length of the packets in the transmit queue
     transmit_queue_contents_len: usize,
+
+    total_read: usize,
+    total_sent: usize,
 }
 
 #[derive(Debug)]
@@ -412,6 +415,13 @@ impl State {
             match self.socket.poll_recv(cx, &mut iovs, &mut metas) {
                 Poll::Ready(Ok(msgs)) => {
                     self.recv_limiter.record_work(msgs);
+                    let read: usize = metas.iter().take(msgs).map(|meta| meta.len).sum();
+                    self.total_read += read;
+                    tracing::warn!(
+                        "bytes read: {}, total bytes read: {}",
+                        read,
+                        self.total_read
+                    );
                     for (meta, buf) in metas.iter().zip(iovs.iter()).take(msgs) {
                         let mut data: BytesMut = buf[0..meta.len].into();
                         while !data.is_empty() {
@@ -499,6 +509,12 @@ impl State {
                 Poll::Ready(Ok(n)) => {
                     let contents_len: usize =
                         self.outgoing.drain(..n).map(|t| t.contents.len()).sum();
+                    self.total_sent += contents_len;
+                    tracing::warn!(
+                        "bytes sent: {}, total bytes sent: {}",
+                        contents_len,
+                        self.total_sent
+                    );
                     self.transmit_queue_contents_len = self
                         .transmit_queue_contents_len
                         .saturating_sub(contents_len);
@@ -710,6 +726,8 @@ impl EndpointRef {
                 send_limiter: WorkLimiter::new(SEND_TIME_BOUND),
                 runtime,
                 transmit_queue_contents_len: 0,
+                total_read: 0,
+                total_sent: 0,
             }),
         }))
     }
