@@ -233,6 +233,12 @@ fn send(
     let mut addrs: [MaybeUninit<socket2::SockAddr>; BATCH_SIZE] =
         unsafe { MaybeUninit::uninit().assume_init() };
     for (i, transmit) in transmits.iter().enumerate().take(BATCH_SIZE) {
+        tracing::info!(
+            "send transmit idx={}, segment_size={:?}, contents[:20]={:02X?}",
+            i,
+            transmit.segment_size,
+            &transmit.contents[..20]
+        );
         let dst_addr = unsafe {
             ptr::write(
                 addrs[i].as_mut_ptr(),
