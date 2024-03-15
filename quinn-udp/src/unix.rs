@@ -259,11 +259,19 @@ fn send(
     let num_transmits = transmits.len().min(BATCH_SIZE);
 
     loop {
-        tracing::info!("sendmmsg before, vlen={}, msgs={:?}", num_transmits, &msgs);
+        tracing::info!(
+            "sendmmsg before, vlen={}, msgs={:?}",
+            num_transmits,
+            msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>()
+        );
         let n = unsafe {
             sendmmsg_with_fallback(io.as_raw_fd(), msgs.as_mut_ptr(), num_transmits as _)
         };
-        tracing::info!("sendmmsg after, msgs={:?}, n={}", &msgs, n);
+        tracing::info!(
+            "sendmmsg after, msgs={:?}, n={}",
+            msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>(),
+            n
+        );
         if n == -1 {
             let e = io::Error::last_os_error();
             tracing::error!("transmit error: {:?}", e);
