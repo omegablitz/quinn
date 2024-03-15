@@ -3104,6 +3104,7 @@ impl Connection {
 
         // STREAM
         if space_id == SpaceId::Data {
+            tracing::info!("POPULATE_PACKET, pn={}", pn);
             sent.stream_frames = self.streams.write_stream_frames(buf, max_size);
             self.stats.frame_tx.stream += sent.stream_frames.len() as u64;
         }
