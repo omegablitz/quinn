@@ -270,7 +270,7 @@ fn send(
         assert!(iovecs
             .iter()
             .zip(msgs.iter())
-            .all(|(iovec, msghdr)| iovec.iov_len == msghdr.msg_len));
+            .all(|(iovec, msghdr)| iovec.iov_len == msghdr.msg_len as usize));
         tracing::info!(
             "sendmmsg after, msghdr_lens={:?}, n={}",
             msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>(),
