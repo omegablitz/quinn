@@ -267,6 +267,10 @@ fn send(
         let n = unsafe {
             sendmmsg_with_fallback(io.as_raw_fd(), msgs.as_mut_ptr(), num_transmits as _)
         };
+        assert!(iovecs
+            .iter()
+            .zip(msgs.iter())
+            .all(|(iovec, msghdr)| iovec.iov_len == msghdr.msg_len));
         tracing::info!(
             "sendmmsg after, msghdr_lens={:?}, n={}",
             msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>(),
