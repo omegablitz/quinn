@@ -396,6 +396,8 @@ unsafe fn sendmmsg_with_fallback(
     match e.raw_os_error() {
         Some(libc::ENOSYS) => {
             // Fallback to `sendmsg`.
+            tracing::warn!("sendmmsg fallback");
+            assert!(vlen <= 1);
             sendmmsg_fallback(sockfd, msgvec, vlen)
         }
         _ => -1,
