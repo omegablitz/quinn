@@ -260,15 +260,15 @@ fn send(
 
     loop {
         tracing::info!(
-            "sendmmsg before, vlen={}, msgs={:?}",
+            "sendmmsg before, vlen={}, iov_lens={:?}",
             num_transmits,
-            msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>()
+            iovecs.iter().map(|x| x.iov_len).collect::<Vec<_>>()
         );
         let n = unsafe {
             sendmmsg_with_fallback(io.as_raw_fd(), msgs.as_mut_ptr(), num_transmits as _)
         };
         tracing::info!(
-            "sendmmsg after, msgs={:?}, n={}",
+            "sendmmsg after, msghdr_lens={:?}, n={}",
             msgs.iter().map(|x| x.msg_len).collect::<Vec<_>>(),
             n
         );
