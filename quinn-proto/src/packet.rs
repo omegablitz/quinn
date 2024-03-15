@@ -466,7 +466,9 @@ impl PartialEncode {
             slice.put_u16(len as u16 | 0b01 << 14);
         }
 
+        let mut pn = None;
         if let Some((number, crypto)) = crypto {
+            pn = Some(number);
             crypto.encrypt(number, buf, header_len);
         }
 
@@ -475,7 +477,13 @@ impl PartialEncode {
             "packet must be padded to at least {} bytes for header protection sampling",
             pn_pos + 4 + header_crypto.sample_size()
         );
+
         header_crypto.encrypt(pn_pos, buf);
+        tracing::info!(
+            "packet_no={:?}, encrypted={:02X?}",
+            pn,
+            &buf[pn_pos..pn_pos + 2]
+        );
     }
 }
 
