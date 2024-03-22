@@ -204,12 +204,14 @@ impl<'a> SendStream<'a> {
 
     pub fn try_write_chunks(&mut self, data: &mut [Bytes]) -> Result<bool, WriteError> {
         let data_len = data.iter().map(Bytes::len).sum::<usize>() as u64;
-        let written = self.write_source(&mut BytesArray::from_chunks(data), data_len)?;
-        if written.bytes == 0 {
-            Ok(false)
-        } else {
-            assert_eq!(data_len, written.bytes as u64);
-            Ok(true)
+        let maybe_written = self.write_source(&mut BytesArray::from_chunks(data), data_len);
+        match maybe_written {
+            Ok(written) => {
+                assert_eq!(data_len, written.bytes as u64);
+                Ok(true)
+            }
+            Err(WriteError::Blocked) => Ok(false),
+            Err(e) => Err(e),
         }
     }
 
@@ -245,7 +247,7 @@ impl<'a> SendStream<'a> {
         }
 
         let was_pending = stream.is_pending();
-        let written = stream.write(source, limit)?;
+        let written = stream.write(source, limit, min_limit.max(1))?;
         self.state.data_sent += written.bytes as u64;
         self.state.unacked_data += written.bytes as u64;
         trace!(stream = %self.id, "wrote {} bytes", written.bytes);

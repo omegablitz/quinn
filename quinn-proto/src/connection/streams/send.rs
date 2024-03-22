@@ -53,6 +53,7 @@ impl Send {
         &mut self,
         source: &mut S,
         limit: u64,
+        min_budget: u64,
     ) -> Result<Written, WriteError> {
         if !self.is_writable() {
             return Err(WriteError::UnknownStream);
@@ -61,7 +62,7 @@ impl Send {
             return Err(WriteError::Stopped(error_code));
         }
         let budget = self.max_data - self.pending.offset();
-        if budget == 0 {
+        if budget < min_budget {
             return Err(WriteError::Blocked);
         }
         let mut limit = limit.min(budget) as usize;
