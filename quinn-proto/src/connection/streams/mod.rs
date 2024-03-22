@@ -187,7 +187,9 @@ impl<'a> SendStream<'a> {
     ///
     /// Returns the number of bytes successfully written.
     pub fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
-        Ok(self.write_source(&mut ByteSlice::from_slice(data))?.bytes)
+        Ok(self
+            .write_source(&mut ByteSlice::from_slice(data), 0)?
+            .bytes)
     }
 
     /// Send data on the given stream
@@ -197,16 +199,34 @@ impl<'a> SendStream<'a> {
     /// [`Written::chunks`] will not count this chunk as fully written. However
     /// the chunk will be advanced and contain only non-written data after the call.
     pub fn write_chunks(&mut self, data: &mut [Bytes]) -> Result<Written, WriteError> {
-        self.write_source(&mut BytesArray::from_chunks(data))
+        self.write_source(&mut BytesArray::from_chunks(data), 0)
     }
 
-    fn write_source<B: BytesSource>(&mut self, source: &mut B) -> Result<Written, WriteError> {
+    pub fn try_write_chunks(&mut self, data: &mut [Bytes]) -> Result<bool, WriteError> {
+        let data_len = data.iter().map(Bytes::len).sum::<usize>() as u64;
+        let written = self.write_source(&mut BytesArray::from_chunks(data), data_len)?;
+        if written.bytes == 0 {
+            Ok(false)
+        } else {
+            assert_eq!(data_len, written.bytes as u64);
+            Ok(true)
+        }
+    }
+
+    fn write_source<B: BytesSource>(
+        &mut self,
+        source: &mut B,
+        min_limit: u64,
+    ) -> Result<Written, WriteError> {
         if self.conn_state.is_closed() {
             trace!(%self.id, "write blocked; connection draining");
             return Err(WriteError::Blocked);
         }
 
         let limit = self.state.write_limit();
+        if limit < min_limit {
+            return Err(WriteError::Blocked);
+        }
         let stream = self
             .state
             .send

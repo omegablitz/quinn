@@ -61,6 +61,29 @@ impl SendStream {
         WriteChunks { stream: self, bufs }.await
     }
 
+    /// Tries to write chunks to the stream
+    ///
+    /// Either writes all chunks (if enough buffer space), or none of them
+    pub fn try_write_chunks(&mut self, bufs: &mut [Bytes]) -> Result<bool, WriteError> {
+        let mut conn = self.conn.state.lock("SendStream::poll_write");
+        if self.is_0rtt {
+            conn.check_0rtt()
+                .map_err(|()| WriteError::ZeroRttRejected)?;
+        }
+        if let Some(ref x) = conn.error {
+            return Err(WriteError::ConnectionLost(x.clone()));
+        }
+
+        conn.inner
+            .send_stream(self.stream)
+            .try_write_chunks(bufs)
+            .map_err(|err| match err {
+                proto::WriteError::Blocked => unreachable!("send should be atomic"),
+                proto::WriteError::Stopped(code) => WriteError::Stopped(code),
+                proto::WriteError::UnknownStream => WriteError::UnknownStream,
+            })
+    }
+
     /// Convenience method to write a single chunk in its entirety to the stream
     pub async fn write_chunk(&mut self, buf: Bytes) -> Result<(), WriteError> {
         WriteChunk {
